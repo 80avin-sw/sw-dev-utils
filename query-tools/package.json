@@ -1,0 +1,13 @@
+{
+	"name": "query-tools",
+	"scripts": {
+		"bench": "bench-all.sh",
+		"plan": "plan.js"
+	},
+	"dependencies": {
+		"dotenv": "^16.4.5",
+		"knex": "^0.21.14",
+		"lz-string": "^1.5.0",
+		"pg": "^8.5.1"
+	}
+}
