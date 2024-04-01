@@ -46,9 +46,9 @@ async function runBenchmarks(args, numRuns) {
           }
         }),
       ),
-      2
+      2,
     );
-    process.exit(0)
+    process.exit(0);
 
     // for (let i = 0; i < numRuns; i++) {
     //   const benchResult = await runBenchmarksOnce(items);

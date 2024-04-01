@@ -6,6 +6,8 @@ const { randomUUID } = require("crypto");
 const path = require("path");
 const vm = require("vm");
 
+const QUERY_TAG_PREFIX = process.env.QUERY_TAG_PREFIX || "benchquery";
+
 const getRSConfig = (env) => ({
   client: "redshift",
   searchPath: [env.REDSHIFT_DB_SCHEMA],
@@ -121,19 +123,22 @@ function queryBatch(count, sql) {
   let query = `SET enable_result_cache_for_session TO off;`;
   const queryTags = [];
   for (let i = 0; i < count; i++) {
-    const queryTag = `-- avinash${randomUUID()}`;
+    const queryTag = `-- ${QUERY_TAG_PREFIX}${randomUUID()}`;
     queryTags.push(queryTag);
     query += `${queryTag}\n${sql};`;
   }
   const timeBeforeStart = new Date(+new Date() - 5000).toISOString(); // any suitable time before running query. Offset by -5000ms to cover time inconsistencies b/w redshift & local clock
   query += `SELECT * FROM sys_query_history WHERE ${queryTags
-    .map((qt) => `(query_text like '${qt}%' AND start_time > timestamp '${timeBeforeStart}')`)
+    .map(
+      (qt) =>
+        `(query_text like '${qt}%' AND start_time > timestamp '${timeBeforeStart}')`,
+    )
     .join(" OR ")}`;
   return query;
 }
 
 function getQueries(sql) {
-  const queryTag = `-- avinash${randomUUID()}`;
+  const queryTag = `-- ${QUERY_TAG_PREFIX}${randomUUID()}`;
   const timeBeforeStart = new Date(+new Date() - 5000).toISOString(); // any suitable time before running query. Offset by -5000ms to cover time inconsistencies b/w redshift & local clock
   return [
     `SET enable_result_cache_for_session TO off;`,
@@ -155,9 +160,13 @@ function* getSqlFiles(args, depth = 3) {
         // console.log('dir', filename, fs.readdirSync(filename))
         yield* getSqlFiles(
           fs.readdirSync(filename).map((fn) => path.join(filename, fn)),
-          depth - 1
+          depth - 1,
         );
-      } else if (stats.isFile() && filename.endsWith(".sql") && !filename.includes(".ignore")) {
+      } else if (
+        stats.isFile() &&
+        filename.endsWith(".sql") &&
+        !filename.includes(".ignore")
+      ) {
         // console.log('file', filename)
         yield filename;
       }
@@ -167,10 +176,10 @@ function* getSqlFiles(args, depth = 3) {
 
 /**
  * Similar to `Promise.all` but doesn't run all promises at once. Also, the argument should be array of functions that return promises.
- * 
+ *
  * @param {(() => Promise<void>)[]} fns List of functions to execute in a pool
- * @param {number} queueSize 
- * @returns 
+ * @param {number} queueSize
+ * @returns
  */
 function Promise_pool(fns, queueSize = 10) {
   return new Promise((resolve, reject) => {
@@ -207,7 +216,7 @@ class BenchLog {
     console.log(
       "file".padEnd(colWidths[0], " "),
       "queryId".padEnd(15, " "),
-      ...Object.keys(result.times).map((col) => col.padEnd(15, " "))
+      ...Object.keys(result.times).map((col) => col.padEnd(15, " ")),
     );
   }
   logItem(result, headers = true) {
@@ -218,7 +227,9 @@ class BenchLog {
     console.log(
       result.file.padEnd(colWidths[0], " "),
       result.qlog.query_id.padEnd(15, " "),
-      ...Object.values(result.times).map((time) => (time / 1e6).toFixed(3).padEnd(15, " "))
+      ...Object.values(result.times).map((time) =>
+        (time / 1e6).toFixed(3).padEnd(15, " "),
+      ),
     );
   }
   logBatch(batchResult, headers = true) {
@@ -236,12 +247,22 @@ function printResults(items, benchResults) {
   items.forEach((it, i) => {
     const file = it.file;
     console.log("file: ", file);
-    console.log(["#\t", ...Object.keys(benchResults[0][0].times).map((col) => col.padEnd(20, " "))].join(""));
+    console.log(
+      [
+        "#\t",
+        ...Object.keys(benchResults[0][0].times).map((col) =>
+          col.padEnd(20, " "),
+        ),
+      ].join(""),
+    );
     benchResults.forEach((benchResult, j) => {
       console.log(
-        [`${j}#\t`, ...Object.values(benchResult[i].times).map((time) => (time / 1e6).toFixed(3).padEnd(20, " "))].join(
-          ""
-        )
+        [
+          `${j}#\t`,
+          ...Object.values(benchResult[i].times).map((time) =>
+            (time / 1e6).toFixed(3).padEnd(20, " "),
+          ),
+        ].join(""),
       );
     });
     const meanTimes = benchResults.reduce((acc, br) => {
@@ -252,12 +273,15 @@ function printResults(items, benchResults) {
     }, {});
 
     console.log(`Avg`);
-    Object.entries(meanTimes).forEach(([col, time]) => console.log(`\t${col.padEnd(20, " ")}: ${time.toFixed(3)}`));
+    Object.entries(meanTimes).forEach(([col, time]) =>
+      console.log(`\t${col.padEnd(20, " ")}: ${time.toFixed(3)}`),
+    );
     console.log("-".repeat(30));
   });
 }
 
-const pev2_path = "file://"+path.dirname(require.main.filename)+"/pev2.html";
+const pev2_path =
+  "file://" + path.dirname(require.main.filename) + "/pev2.html";
 
 function setPipeFile(tee = true) {}
 
